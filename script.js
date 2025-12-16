@@ -5,157 +5,108 @@ const timezone = document.getElementById("time-zone");
 const countryEl = document.getElementById("country");
 const weatherForecastEl = document.getElementById("weather-forecast");
 const currentTempEl = document.getElementById("current-temp");
-//const currentLocation = document.getElementById("time-zone");
-const days = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
-const months = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
 
-// fetch("https://ipapi.co/json/")
-//   .then((response) => response.json())
-//   .then((data) => {
-//     console.log("City:", data.city);
-//     console.log("Region:", data.region);
-//     console.log("Country:", data.country_name);
-//   })
-//   .catch((error) => console.error("Error:", error));
+const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-// fetch("https://ipwho.is/")
-//   .then((res) => res.json())
-//   .then((data) => console.log(data.city));
-
-// currentLocation.innerHTML = data.city;
-
-//document.addEventListener("DOMContentLoaded", function () {
+/* ---------- CITY FROM IP ---------- */
 fetch("https://ipwho.is/")
-  .then((response) => response.json())
-  .then((data) => {
-    if (data && data.city) {
-      document.getElementById("time-zone").textContent = data.city;
+  .then(res => res.json())
+  .then(data => {
+    if (data?.city) {
+      timezone.textContent = data.city;
+    } else {
+      console.info("Location info not available from IP service.");
     }
   })
-  .catch((err) => console.error("Location fetch failed", err));
-//});
+  .catch(() => {
+    console.info("Unable to fetch location from IP service.");
+  });
 
-const API_KEY = "49cc8c821cd2aff9af04c9f98c36eb74";
-
+/* ---------- TIME & DATE ---------- */
 setInterval(() => {
   const time = new Date();
-  const month = time.getMonth();
-  const date = time.getDate();
-  const day = time.getDay();
-  const hour = time.getHours();
-  const hoursIn12HrFormat = hour >= 13 ? hour % 12 : hour;
-  const minutes = time.getMinutes();
-  const ampm = hour >= 12 ? "PM" : "AM";
+  const h = time.getHours();
+  const m = time.getMinutes();
+  const d = time.getDay();
 
-  timeEl.innerHTML =
-    (hoursIn12HrFormat < 10 ? "0" + hoursIn12HrFormat : hoursIn12HrFormat) +
-    ":" +
-    (minutes < 10 ? "0" + minutes : minutes) +
-    " " +
-    `<span id="am-pm">${ampm}</span>`;
-
-  dateEl.innerHTML = days[day] + ", " + date + " " + months[month];
+  timeEl.innerHTML = `${h % 12 || 12}:${m < 10 ? "0" : ""}${m}
+    <span id="am-pm">${h >= 12 ? "PM" : "AM"}</span>`;
+  dateEl.innerHTML = `${days[d]}, ${time.getDate()} ${months[time.getMonth()]}`;
 }, 1000);
-getWeatherData();
-function getWeatherData() {
-  navigator.geolocation.getCurrentPosition((success) => {
-    let { latitude, longitude } = success.coords;
 
-    fetch(
-      `https://api.openweathermap.org/data/2.5/onecall?lat=${latitude}&lon=${longitude}&exclude=hourly,minutely&units=metric&appid=${API_KEY}`
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        console.log(data);
-        showWeatherData(data);
-      });
-  });
+/* ---------- WEATHER ---------- */
+const API_KEY = "49cc8c821cd2aff9af04c9f98c36eb74";
+getWeatherData();
+
+function getWeatherData() {
+  if (!navigator.geolocation) {
+    console.info("Geolocation not supported by this browser.");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    ({ coords }) => {
+      fetch(
+        `https://api.openweathermap.org/data/2.5/onecall?lat=${coords.latitude}&lon=${coords.longitude}&exclude=hourly,minutely&units=metric&appid=${API_KEY}`
+      )
+        .then(res => res.json())
+        .then(data => showWeatherData(data))
+        .catch(() => {
+          console.info("Weather service is currently unavailable.");
+        });
+    },
+    () => {
+      console.info("Location permission denied by user.");
+    }
+  );
 }
 
+/* ---------- SAFE RENDER ---------- */
 function showWeatherData(data) {
-  let { humidity, pressure, sunrise, sunset, wind_speed } = data.current;
+  if (!data || !data.current) {
+    console.info(
+      "Weather data could not be loaded. This may be due to API access limitations or temporary service issues."
+    );
+    return;
+  }
 
-  timezone.innerHTML = data.timezone;
-  countryEl.innerHTML = data.lat + "N " + data.lon + "E";
-  console.log(data.current);
+  const { humidity, pressure, sunrise, sunset, wind_speed } = data.current;
 
-  currentWeatherItemsEl.innerHTML = `<div class="weather-item">
-        <div>Humidity</div>
-        <div>${humidity}%</div>
-    </div>
-    <div class="weather-item">
-        <div>Pressure</div>
-        <div>${pressure}</div>
-    </div>
-    <div class="weather-item">
-        <div>Wind Speed</div>
-        <div>${wind_speed}</div>
-    </div>
-    <div class="weather-item">
-        <div>Sunrise</div>
-        <div>${window.moment(sunrise * 1000).format("HH:mm a")}</div>
-    </div>
-    <div class="weather-item">
-        <div>Sunset</div>
-        <div>${window.moment(sunset * 1000).format("HH:mm a")}</div>
-    </div>
-    
-    
-    `;
+  timezone.textContent = data.timezone;
+  countryEl.textContent = `${data.lat}N ${data.lon}E`;
 
-  let otherDayForcast = "";
+  currentWeatherItemsEl.innerHTML = `
+    <div class="weather-item"><div>Humidity</div><div>${humidity}%</div></div>
+    <div class="weather-item"><div>Pressure</div><div>${pressure}</div></div>
+    <div class="weather-item"><div>Wind Speed</div><div>${wind_speed}</div></div>
+    <div class="weather-item"><div>Sunrise</div><div>${moment(sunrise * 1000).format("hh:mm A")}</div></div>
+    <div class="weather-item"><div>Sunset</div><div>${moment(sunset * 1000).format("hh:mm A")}</div></div>
+  `;
+
+  let forecastHTML = "";
+
   data.daily.forEach((day, idx) => {
-    if (idx == 0) {
+    if (idx === 0) {
       currentTempEl.innerHTML = `
-            <img src="http://openweathermap.org/img/wn//${
-              day.weather[0].icon
-            }@4x.png" alt="weather icon" class="w-icon">
-            <div class="other">
-                <div class="day">${window
-                  .moment(day.dt * 1000)
-                  .format("dddd")}</div>
-                <div class="temp">Night - ${day.temp.night}&#176;C</div>
-                <div class="temp">Day - ${day.temp.day}&#176;C</div>
-            </div>
-            
-            `;
+        <img src="https://openweathermap.org/img/wn/${day.weather[0].icon}@4x.png">
+        <div class="other">
+          <div class="day">${moment(day.dt * 1000).format("dddd")}</div>
+          <div class="temp">Night - ${day.temp.night}°C</div>
+          <div class="temp">Day - ${day.temp.day}°C</div>
+        </div>
+      `;
     } else {
-      otherDayForcast += `
-            <div class="weather-forecast-item">
-                <div class="day">${window
-                  .moment(day.dt * 1000)
-                  .format("ddd")}</div>
-                <img src="http://openweathermap.org/img/wn/${
-                  day.weather[0].icon
-                }@2x.png" alt="weather icon" class="w-icon">
-                <div class="temp">Night - ${day.temp.night}&#176;C</div>
-                <div class="temp">Day - ${day.temp.day}&#176;C</div>
-            </div>
-            
-            `;
+      forecastHTML += `
+        <div class="weather-forecast-item">
+          <div class="day">${moment(day.dt * 1000).format("ddd")}</div>
+          <img src="https://openweathermap.org/img/wn/${day.weather[0].icon}@2x.png">
+          <div class="temp">Night - ${day.temp.night}°C</div>
+          <div class="temp">Day - ${day.temp.day}°C</div>
+        </div>
+      `;
     }
   });
 
-  weatherForecastEl.innerHTML = otherDayForcast;
+  weatherForecastEl.innerHTML = forecastHTML;
 }
