@@ -77,7 +77,6 @@ setInterval(() => {
 
   dateEl.innerHTML = days[day] + ", " + date + " " + months[month];
 }, 1000);
-e;
 getWeatherData();
 function getWeatherData() {
   navigator.geolocation.getCurrentPosition((success) => {
