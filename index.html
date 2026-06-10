@@ -40,7 +40,28 @@
       </div>
     </div>
 
-    <div id ="jag-mbox" class="jag"></div>
+    <div id="offer-slot" class="mboxDefault">
+  Default content
+</div>
+
+<script>
+  adobe.target.getOffer({
+    mbox: "jag-mbox",
+    params: {
+      pageName: "home"
+    },
+    success: function (offer) {
+      adobe.target.applyOffer({
+        mbox: "jag-mbox",
+        selector: "#offer-slot",
+        offer: offer
+      });
+    },
+    error: function (status, error) {
+      console.error(status, error);
+    }
+  });
+</script>
 
     <div class="future-forecast">
       <div class="today" id="current-temp">
